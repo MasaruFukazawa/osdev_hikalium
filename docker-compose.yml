@@ -1,0 +1,9 @@
+services:
+  rust-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rust_ubuntu
+    volumes:
+      - ./wasabi:/wasabi
+    tty: true
