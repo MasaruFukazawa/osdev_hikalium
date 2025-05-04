@@ -1,5 +1,11 @@
 [toolchain]
-channel = "nightly-2024-04-01"
-components = ["rustfmt", "rust-src"]
-targets = ["x86_64-unknown-linux-gun"]
+channel = "nightly-2024-01-01"
+components = [
+    "rustfmt",
+    "rust-src"
+]
+targets = [
+    "x86_64-unknown-gnu",
+    "x86_64-unknown-uefi"
+]
 profile = "default"

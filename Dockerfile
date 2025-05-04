@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     qemu-system-x86 \
     qemu-utils \
     libssl-dev \
+    gcc-x86-64-linux-gnu \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
