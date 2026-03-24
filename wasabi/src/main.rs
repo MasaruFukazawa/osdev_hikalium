@@ -87,6 +87,9 @@ struct EfiGraphicsOutputProtocolPixelInfo {
 
 const _: () = assert!(size_of::<EfiGraphicsOutputProtocolPixelInfo>() == 36);
 
+/// UEFIのGraphics Output Protocolを取得する
+/// efi_system_table: UEFIシステムテーブルへの参照
+/// 戻り値: 成功すればグラフィック出力プロトコルへの参照、失敗すればErr。
 fn locate_graphic_protocol<'a>(
     efi_system_table: &EfiSystemTable,
 ) -> Result<&'a EfiGraphicsOutProtocol<'a>> {
@@ -104,10 +107,12 @@ fn locate_graphic_protocol<'a>(
     Ok(unsafe { &*graphic_output_protocol })
 }
 
+/// x86のHLT命令を実行し、割り込みが来るまでCPUを休止させる
 pub fn hlt() {
     unsafe { asm!("hlt") }
 }
 
+/// UEFIエントリポイント。VRAMを初期化し、矩形・直線・文字列の描画テストを行う。
 #[no_mangle]
 fn efi_main(_image_handle: EfiHandle, efi_system_table: &EfiSystemTable) {
     let mut vram = init_vram(efi_system_table).expect("init_vram failed");
@@ -146,11 +151,14 @@ fn efi_main(_image_handle: EfiHandle, efi_system_table: &EfiSystemTable) {
         draw_font_fg(&mut vram, i as i64 * 16 + 256, i as i64 * 16, 0xffffff, c);
     }
 
+    draw_str_fg(&mut vram, 256, 256, 0xffffff, "Hello, world!");
+
     loop {
         hlt()
     }
 }
 
+/// パニック時のハンドラ。HLTループでCPUを停止させる。
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
     loop {
@@ -158,6 +166,11 @@ fn panic(_info: &PanicInfo) -> ! {
     }
 }
 
+/// ピクセルバッファへの描画操作を抽象化するtrait。
+/// traitはRustにおける「インターフェース」。具体的なデータ構造（VramBufferInfoなど）が
+/// このtraitをimplすることで、draw_pointやfill_rectなどの描画関数を共通で使えるようになる。
+/// 必須メソッド: bytes_per_pixel, pixels_per_line, width, height, buf_mut
+/// デフォルト実装: unchecked_pixel_at_mut, pixel_at_mut, is_in_x_range, is_in_y_range
 trait Bitmap {
     fn bytes_per_pixel(&self) -> i64;
     fn pixels_per_line(&self) -> i64;
@@ -218,6 +231,9 @@ impl Bitmap for VramBufferInfo {
     }
 }
 
+/// UEFIのGraphics Output Protocolからフレームバッファ情報を取得し、VramBufferInfoを初期化する
+/// efi_system_table: UEFIシステムテーブルへの参照
+/// 戻り値: 成功すればVRAMのバッファ情報、失敗すればErr。
 fn init_vram(efi_system_table: &EfiSystemTable) -> Result<VramBufferInfo> {
     let gp = locate_graphic_protocol(efi_system_table)?;
     Ok(VramBufferInfo {
@@ -228,15 +244,21 @@ fn init_vram(efi_system_table: &EfiSystemTable) -> Result<VramBufferInfo> {
     })
 }
 
+/// 範囲チェックなしで1ピクセルに色を書き込む（高速版、呼び出し側で範囲保証が必要）
 unsafe fn unchecked_draw_point<T: Bitmap>(buf: &mut T, color: u32, x: i64, y: i64) {
     *buf.unchecked_pixel_at_mut(x, y) = color;
 }
 
+/// 範囲チェック付きで1ピクセルに色を書き込む
+/// 座標が範囲外ならErr、成功ならOk(())。
 fn draw_point<T: Bitmap>(buf: &mut T, color: u32, x: i64, y: i64) -> Result<()> {
     *(buf.pixel_at_mut(x, y).ok_or("Out of Range")?) = color;
     Ok(())
 }
 
+/// 指定した位置とサイズで矩形を塗りつぶす
+/// px, py: 左上の座標、w: 幅、h: 高さ
+/// 範囲外ならErr、成功ならOk(())。範囲チェック後はunchecked版で高速に描画する。
 fn fill_rect<T: Bitmap>(buf: &mut T, color: u32, px: i64, py: i64, w: i64, h: i64) -> Result<()> {
     if !buf.is_in_x_range(px)
         || !buf.is_in_y_range(py)
@@ -255,6 +277,8 @@ fn fill_rect<T: Bitmap>(buf: &mut T, color: u32, px: i64, py: i64, w: i64, h: i6
     Ok(())
 }
 
+/// 直線描画用の傾き計算。主軸方向の距離da、副軸方向の距離db、主軸上の現在位置iaから副軸の座標を求める。
+/// da < dbなら描画不要（None）、それ以外は整数除算で副軸の位置をSomeで返す。
 fn calc_slope_point(da: i64, db: i64, ia: i64) -> Option<i64> {
     if da < db {
         None
@@ -267,11 +291,18 @@ fn calc_slope_point(da: i64, db: i64, ia: i64) -> Option<i64> {
     }
 }
 
+/// 2点間に直線を描画する（ブレゼンハム方式）
+/// buf: 描画先のビットマップ
+/// color: 線の色
+/// x0, y0: 始点の座標
+/// x1, y1: 終点の座標
+/// 戻り値: 座標が範囲外ならErr、成功ならOk(())。
+/// dx >= dy なら水平寄り、そうでなければ垂直寄りに軸を切り替えて描画する。
 fn draw_line<T: Bitmap>(buf: &mut T, color: u32, x0: i64, y0: i64, x1: i64, y1: i64) -> Result<()> {
     if !buf.is_in_x_range(x0)
         || !buf.is_in_x_range(x1)
-        || !buf.is_in_x_range(y0)
-        || !buf.is_in_x_range(y1)
+        || !buf.is_in_y_range(y0)
+        || !buf.is_in_y_range(y1)
     {
         return Err("Out of Range");
     }
@@ -294,15 +325,19 @@ fn draw_line<T: Bitmap>(buf: &mut T, color: u32, x0: i64, y0: i64, x1: i64, y1: 
     Ok(())
 }
 
+/// font.txtから指定した文字のフォントデータを検索する
+/// c: 検索対象の文字（ASCII範囲）
+/// 戻り値: 見つかれば8x16のフォントビットマップをSomeで返す。見つからなければNone。
+/// font.txtは"0xXX"行でASCIIコードを示し、続く16行が8文字幅のドットパターン。
 fn lookup_font(c: char) -> Option<[[char; 8]; 16]> {
     const FONT_SOURCE: &str = include_str!("./font.txt");
 
-    if let Ok(_c) = u8::try_from(c) {
+    if let Ok(c) = u8::try_from(c) {
         let mut fi = FONT_SOURCE.split('\n');
         while let Some(line) = fi.next() {
             if let Some(line) = line.strip_prefix("0x") {
                 if let Ok(idx) = u8::from_str_radix(line, 16) {
-                    if idx != c as u8 {
+                    if idx != c {
                         continue;
                     }
                     let mut font = [['*'; 8]; 16];
@@ -321,6 +356,12 @@ fn lookup_font(c: char) -> Option<[[char; 8]; 16]> {
     None
 }
 
+/// 1文字を前景色のみで描画する
+/// buf: 描画先のビットマップ
+/// x, y: 描画開始位置（左上）の座標
+/// color: 前景色（'*'のピクセルに使う色）
+/// c: 描画する文字
+/// フォントデータの'*'部分だけをcolorで描画し、それ以外はスキップ（背景は塗らない）。
 fn draw_font_fg<T: Bitmap>(buf: &mut T, x: i64, y: i64, color: u32, c: char) {
     if let Some(font) = lookup_font(c) {
         for (dy, row) in font.iter().enumerate() {
@@ -332,5 +373,18 @@ fn draw_font_fg<T: Bitmap>(buf: &mut T, x: i64, y: i64, color: u32, c: char) {
                 let _ = draw_point(buf, color, x + dx as i64, y + dy as i64);
             }
         }
+    }
+}
+
+/// 文字列を前景色のみで描画する
+/// buf: 描画先のビットマップ
+/// x, y: 描画開始位置（左上）の座標
+/// color: 前景色（文字の色）
+/// s: 描画する文字列
+/// 戻り値: なし。1文字あたり8px幅で横に並べて描画する。
+fn draw_str_fg<T: Bitmap>(buf: &mut T, x: i64, y: i64, color: u32, s: &str) {
+    for (i, c) in s.chars().enumerate() {
+        // i文字目を 8 * i ピクセル分右にずらして描画
+        draw_font_fg(buf, x + i as i64 * 8, y, color, c)
     }
 }
