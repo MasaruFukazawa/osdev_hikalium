@@ -1,14 +1,14 @@
-#![no_std]
-#![no_main]
-#![feature(offset_of)]
+#![no_std] // 標準ライブラリを使わない（ベアメタル環境にはOSがないため）
+#![no_main] // 通常のmain関数エントリポイントを使わない（UEFIのefi_mainを使うため）
+#![feature(offset_of)] // offset_of!マクロを有効化（nightly限定機能、構造体レイアウト検証に使用）
 
-use core::arch::asm;
-use core::cmp::min;
-use core::mem::offset_of;
-use core::mem::size_of;
-use core::panic::PanicInfo;
-use core::ptr::null_mut;
-//use core::slice;
+use core::arch::asm; // インラインアセンブリ（hlt命令で使用）
+use core::cmp::min; // 最小値を返す関数（is_in_x_rangeで使用）
+use core::mem::offset_of; // 構造体フィールドのオフセットを取得するマクロ（EFIテーブルのレイアウト検証で使用）
+use core::mem::size_of; // 型のバイトサイズを取得する関数（EFI構造体のサイズ検証で使用）
+use core::panic::PanicInfo; // パニックハンドラの引数型（#[panic_handler]で使用）
+use core::ptr::null_mut; // nullポインタを生成する関数（UEFIプロトコル取得時に使用）
+//use core::slice; // スライス操作（現在未使用）
 
 type EfiVoid = u8;
 type EfiHandle = u64;
