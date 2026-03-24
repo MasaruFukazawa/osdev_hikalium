@@ -4,11 +4,13 @@
 
 use core::arch::asm; // インラインアセンブリ（hlt命令で使用）
 use core::cmp::min; // 最小値を返す関数（is_in_x_rangeで使用）
+use core::fmt;
+use core::fmt::Write;
 use core::mem::offset_of; // 構造体フィールドのオフセットを取得するマクロ（EFIテーブルのレイアウト検証で使用）
 use core::mem::size_of; // 型のバイトサイズを取得する関数（EFI構造体のサイズ検証で使用）
 use core::panic::PanicInfo; // パニックハンドラの引数型（#[panic_handler]で使用）
 use core::ptr::null_mut; // nullポインタを生成する関数（UEFIプロトコル取得時に使用）
-//use core::slice; // スライス操作（現在未使用）
+                         //use core::slice; // スライス操作（現在未使用）
 
 type EfiVoid = u8;
 type EfiHandle = u64;
@@ -152,6 +154,12 @@ fn efi_main(_image_handle: EfiHandle, efi_system_table: &EfiSystemTable) {
     }
 
     draw_str_fg(&mut vram, 256, 256, 0xffffff, "Hello, world!");
+
+    let mut w = VramTextWriter::new(&mut vram);
+
+    for i in 0..4 {
+        writeln!(w, "i = {i}").unwrap()
+    }
 
     loop {
         hlt()
@@ -386,5 +394,36 @@ fn draw_str_fg<T: Bitmap>(buf: &mut T, x: i64, y: i64, color: u32, s: &str) {
     for (i, c) in s.chars().enumerate() {
         // i文字目を 8 * i ピクセル分右にずらして描画
         draw_font_fg(buf, x + i as i64 * 8, y, color, c)
+    }
+}
+
+struct VramTextWriter<'a> {
+    vram: &'a mut VramBufferInfo,
+    cursor_x: i64,
+    cursor_y: i64,
+}
+
+impl<'a> VramTextWriter<'a> {
+    fn new(vram: &'a mut VramBufferInfo) -> Self {
+        Self {
+            vram,
+            cursor_x: 0,
+            cursor_y: 0,
+        }
+    }
+}
+
+impl fmt::Write for VramTextWriter<'_> {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        for c in s.chars() {
+            if c == '\n' {
+                self.cursor_y += 16;
+                self.cursor_x = 0;
+                continue;
+            }
+            draw_font_fg(self.vram, self.cursor_x, self.cursor_y, 0xffffff, c);
+            self.cursor_x += 8
+        }
+        Ok(())
     }
 }
