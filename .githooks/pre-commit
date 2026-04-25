@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Docker コンテナ rust_ubuntu が起動している前提
+set -e
+
+echo "[pre-commit] cargo fmt --check"
+make cargo-fmt-check
+
+echo "[pre-commit] cargo clippy"
+make cargo-clippy
