@@ -1,4 +1,4 @@
-.PHONY: build up down shell logs restart cargo-fmt cargo-clippy cargo-run cargo-build launch
+.PHONY: build up down shell logs restart cargo-fmt cargo-fmt-check cargo-clippy cargo-run cargo-build launch setup-hooks
 
 build:
 	docker-compose build
@@ -20,8 +20,11 @@ restart: down up
 cargo-fmt:
 	docker exec rust_ubuntu bash -c "cd /wasabi && cargo fmt"
 
+cargo-fmt-check:
+	docker exec rust_ubuntu bash -c "cd /wasabi && cargo fmt -- --check"
+
 cargo-clippy:
-	docker exec rust_ubuntu bash -c "cd /wasabi && cargo clippy"
+	docker exec rust_ubuntu bash -c "cd /wasabi && cargo clippy -- -D warnings"
 
 cargo-run:
 	docker exec rust_ubuntu bash -c "cd /wasabi && cargo run"
@@ -31,3 +34,6 @@ cargo-build:
 
 launch:
 	bash wasabi/scripts/launch_qeme.sh
+
+setup-hooks:
+	git config core.hooksPath .githooks
