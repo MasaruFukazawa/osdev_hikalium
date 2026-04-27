@@ -73,10 +73,12 @@ pub struct EfiMemoryDescriptor {
 }
 
 impl EfiMemoryDescriptor {
+    /// このメモリ領域の用途種別を返す（CONVENTIONAL_MEMORYなど）。
     pub fn memory_type(&self) -> EfiMemoryType {
         self.memory_type
     }
 
+    /// このメモリ領域が占める4KiBページ数を返す。
     pub fn number_of_pages(&self) -> u64 {
         self.number_of_pages
     }
@@ -116,6 +118,8 @@ impl MemoryMapHolder {
 }
 
 impl Default for MemoryMapHolder {
+    /// `Default::default()` で `MemoryMapHolder::new()` を呼び出す。
+    /// clippyの`new_without_default`警告を抑えるための慣用実装。
     fn default() -> Self {
         Self::new()
     }
@@ -198,6 +202,8 @@ pub struct EfiSystemTable {
 const _: () = assert!(offset_of!(EfiSystemTable, boot_services) == 96);
 
 impl EfiSystemTable {
+    /// ブートサービステーブルへの参照を返す。フィールド直接アクセスより
+    /// メソッド経由の方が呼び出し側の見た目が揃うため用意している。
     pub fn boot_services(&self) -> &EfiBootServicesTable {
         self.boot_services
     }
