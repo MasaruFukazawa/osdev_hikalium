@@ -6,21 +6,20 @@ use core::fmt::Write;
 use core::panic::PanicInfo; // パニックハンドラの引数型（#[panic_handler]で使用）
 use core::writeln;
 
+use wasabi::init::init_basic_runtime;
+
 use wasabi::graphics::draw_test_pattern;
 use wasabi::graphics::fill_rect;
 use wasabi::graphics::Bitmap;
 
-use wasabi::qemu::exit_qemu;
-use wasabi::qemu::QemuExitCode;
-
 //use wasabi::serial::SerialPort;
 
-use wasabi::uefi::exit_from_efi_boot_services;
+//use wasabi::uefi::exit_from_efi_boot_services;
 use wasabi::uefi::init_vram;
 use wasabi::uefi::EfiHandle;
 use wasabi::uefi::EfiMemoryType;
 use wasabi::uefi::EfiSystemTable;
-use wasabi::uefi::MemoryMapHolder;
+//use wasabi::uefi::MemoryMapHolder;
 use wasabi::uefi::VramTextWriter;
 
 use wasabi::x86::hlt;
@@ -57,6 +56,7 @@ fn efi_main(image_handle: EfiHandle, efi_system_table: &EfiSystemTable) {
 
     let mut w = VramTextWriter::new(&mut vram);
 
+    /*
     for i in 0..4 {
         writeln!(w, "i = {i}").unwrap()
     }
@@ -67,7 +67,9 @@ fn efi_main(image_handle: EfiHandle, efi_system_table: &EfiSystemTable) {
         .get_memory_map(&mut memory_map);
 
     writeln!(w, "{status:?}").unwrap();
+    */
 
+    let memory_map = init_basic_runtime(image_handle, efi_system_table);
     let mut total_memory_pages = 0;
 
     for e in memory_map.iter() {
@@ -88,9 +90,11 @@ fn efi_main(image_handle: EfiHandle, efi_system_table: &EfiSystemTable) {
     )
     .unwrap();
 
-    exit_from_efi_boot_services(image_handle, efi_system_table, &mut memory_map);
+    //exit_from_efi_boot_services(image_handle, efi_system_table, &mut memory_map);
 
     writeln!(w, "Hello, Non-UEFI world !").unwrap();
 
-    exit_qemu(QemuExitCode::Fail)
+    loop {
+        hlt()
+    }
 }
