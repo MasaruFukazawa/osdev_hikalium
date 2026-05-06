@@ -8,6 +8,8 @@ use core::writeln;
 
 use wasabi::init::init_basic_runtime;
 
+use wasabi::println;
+
 use wasabi::graphics::draw_test_pattern;
 use wasabi::graphics::fill_rect;
 use wasabi::graphics::Bitmap;
@@ -43,8 +45,9 @@ fn panic(_info: &PanicInfo) -> ! {
 /// UEFIエントリポイント。VRAMを初期化し、矩形・直線・文字列の描画テストを行う。
 #[no_mangle]
 fn efi_main(image_handle: EfiHandle, efi_system_table: &EfiSystemTable) {
-    //let mut sw = SerialPort::new_for_com1();
-    //writeln!(sw, "Hello via serial port").unwrap();
+    println!("Booting WasabiOS ... \n");
+    println!("image_handle: {:#018X}\n", image_handle);
+    println!("efi_system_table: {:#p}\n", efi_system_table);
 
     let mut vram = init_vram(efi_system_table).expect("init_vram failed");
     let vw = vram.width();
