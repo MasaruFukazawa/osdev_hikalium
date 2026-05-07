@@ -7,3 +7,20 @@ image_handle: 0x00000000BEC4E498
 
 efi_system_table: 0x00000000bf9ee018
 
+[INFO] src/main.rs:52 : info
+[WARN] src/main.rs:53 : warn
+[ERROR] src/main.rs:54 : error
+00000000: 49 42 49 20 53 59 53 54 46 00 02 00 78 00 00 00 |IBI SYSTF...x...|00000010: F8 EB 8B D5 00 00 00 00 18 D8 92 BF 00 00 00 00 |................|00000020: 00 00 01 00 00 00 00 00 18 CE D8 BE 00 00 00 00 |................|00000030: 50 C2 D1 BE 00 00 00 00 18 BF D8 BE 00 00 00 00 |P...............|00000040: 90 C6 D1 BE 00 00 00 00 18 B3 D8 BE 00 00 00 00 |................|00000050: F0 C0 D1 BE 00 00 00 00 98 EB 9E BF 00 00 00 00 |................|00000060: 40 01 ED BF 00 00 00 00                         |@.......|EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 4096, virtual_start: 0, number_of_pages: 159, attribute: 15 }
+EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 1048576, virtual_start: 0, number_of_pages: 1792, attribute: 15 }
+EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 8421376, virtual_start: 0, number_of_pages: 3, attribute: 15 }
+EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 8437760, virtual_start: 0, number_of_pages: 4, attribute: 15 }
+EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 22020096, virtual_start: 0, number_of_pages: 764470, attribute: 15 }
+EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3153420288, virtual_start: 0, number_of_pages: 9196, attribute: 15 }
+EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3191459840, virtual_start: 0, number_of_pages: 87, attribute: 15 }
+EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3192795136, virtual_start: 0, number_of_pages: 1, attribute: 15 }
+EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3194126336, virtual_start: 0, number_of_pages: 2, attribute: 15 }
+EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3194159104, virtual_start: 0, number_of_pages: 2, attribute: 15 }
+EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3219128320, virtual_start: 0, number_of_pages: 154, attribute: 15 }
+EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 4294967296, virtual_start: 0, number_of_pages: 262144, attribute: 15 }
+Total: 1038014 pages = 4054 Mib
+Hello, Non-UEFI world !

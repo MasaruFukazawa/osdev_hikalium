@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 PROJ_ROOT="$(dirname $(dirname ${BASH_SOURCE:-$0}))"

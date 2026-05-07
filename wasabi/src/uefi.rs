@@ -83,6 +83,8 @@ impl EfiMemoryDescriptor {
         self.number_of_pages
     }
 
+    /// このメモリ領域の物理アドレス先頭を返す。アロケータへ空き領域として
+    /// 登録する際の起点として使う。
     pub fn physical_start(&self) -> u64 {
         self.physical_start
     }

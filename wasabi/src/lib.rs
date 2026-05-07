@@ -17,12 +17,13 @@ pub mod x86;
 #[cfg(test)]
 pub mod test_runner;
 
+/// `cargo test` でビルドした際のエントリポイント。
+/// 通常ビルドの `efi_main`（main.rs）の代わりに、ランタイムを立ち上げてから
+/// `#[test_case]` 群を実行する `run_unit_tests`（カスタムテストフレームワークが
+/// 自動生成する関数、名前は `#![reexport_test_harness_main]` で指定）に飛ぶ。
 #[cfg(test)]
 #[no_mangle]
 pub fn efi_main(image_handle: uefi::EfiHandle, efi_system_table: &uefi::EfiSystemTable) {
-    //let mut memory_map = uefi::MemoryMapHolder::new();
-    //uefi::exit_from_efi_boot_services(image_handle, efi_system_table, &mut memory_map);
-    //allocator::ALLOCATOR.init_with_mmap(&memory_map);
     init::init_basic_runtime(image_handle, efi_system_table);
     run_unit_tests()
 }
