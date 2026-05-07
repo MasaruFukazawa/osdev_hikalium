@@ -156,26 +156,40 @@ fn draw_line<T: Bitmap>(buf: &mut T, color: u32, x0: i64, y0: i64, x1: i64, y1: 
 // 文字描画
 // ---------------------------------------------------------------------------
 
-/// font.txtから指定した文字のフォントデータを検索する
-/// c: 検索対象の文字（ASCII範囲）
-/// 戻り値: 見つかれば8x16のフォントビットマップをSomeで返す。見つからなければNone。
-/// font.txtは"0xXX"行でASCIIコードを示し、続く16行が8文字幅のドットパターン。
+/// font.txtから指定した文字のフォントデータを検索する。
+/// c: 検索対象の文字（ASCII範囲のみ対応。U+0080以上はNone）
+/// 戻り値: 見つかれば 8x16 のフォントビットマップを Some で返す。見つからなければ None。
+///
+/// font.txtの書式:
+///   "0xXX" 行で ASCII コード（16進）を示し、続く16行が8文字幅のドットパターン。
+///   '*' が前景ピクセル、それ以外（'.'やスペース）は背景として扱われる。
+///
+/// 実装メモ:
+///   - 初回呼び出し時に font.txt をパースし、256文字分のグリフ配列をキャッシュする
+///     （`FONT_CACHE`）。2回目以降はキャッシュ参照のみで返す。
+///   - 未定義のコードポイントには初期値 `[['*'; 8]; 16]` がそのまま残る点に注意。
 fn lookup_font(c: char) -> Option<[[char; 8]; 16]> {
     const FONT_SOURCE: &str = include_str!("./font.txt");
+    // 256文字 × 16行 × 8列 のグリフキャッシュ。最初の呼び出しで一度だけ初期化する。
     static mut FONT_CACHE: Option<[[[char; 8]; 16]; 256]> = None;
 
     if let Ok(c) = u8::try_from(c) {
         let font = unsafe {
             FONT_CACHE.get_or_insert_with(|| {
+                // キャッシュ未構築時のみ走る初期化クロージャ。
                 let mut font = [[['*'; 8]; 16]; 256];
                 let mut fi = FONT_SOURCE.split('\n');
 
+                // 行を順に走査し、"0xXX" ヘッダを見つけたらその直後の16行をグリフとして取り込む。
                 while let Some(line) = fi.next() {
                     if let Some(line) = line.strip_prefix("0x") {
                         if let Ok(idx) = u8::from_str_radix(line, 16) {
                             let mut glyph = [['*'; 8]; 16];
+                            // `fi.clone()` でイテレータを複製し、現在位置から16行を覗き見る
+                            // （`fi` 自体は進めず、外側の while で次の "0xXX" まで読み進める）。
                             for (y, line) in fi.clone().take(16).enumerate() {
                                 for (x, c) in line.chars().enumerate() {
+                                    // 8列を超える分は無視（`get_mut` で範囲外を弾く）。
                                     if let Some(e) = glyph[y].get_mut(x) {
                                         *e = c;
                                     }
