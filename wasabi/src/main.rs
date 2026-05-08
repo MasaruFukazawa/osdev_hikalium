@@ -78,10 +78,12 @@ fn efi_main(image_handle: EfiHandle, efi_system_table: &EfiSystemTable) {
     let total_memory_size_mib = total_memory_pages * 4096 / 1024 / 1024;
 
     println!("Total: {total_memory_pages} pages = {total_memory_size_mib} Mib");
-
-    //exit_from_efi_boot_services(image_handle, efi_system_table, &mut memory_map);
-
     println!("Hello, Non-UEFI world !");
+
+    let cr3 = wasabi::x86::read_cr3();
+
+    println!("cr3 = {cr3:#p}");
+    hexdump(unsafe { &*cr3 });
 
     exit_qemu(QemuExitCode::Success);
 }
