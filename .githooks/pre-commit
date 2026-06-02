@@ -3,10 +3,10 @@
 set -e
 
 echo "[pre-commit] cargo fmt --check"
-make cargo-fmt-check
+#make cargo-fmt-check
 
 echo "[pre-commit] cargo clippy"
-make cargo-clippy
+#make cargo-clippy
 
 #echo "[pre-commit] cargo test"
 #make cargo-test

@@ -1,8 +1,22 @@
+extern crate alloc;
+
+use crate::error;
+use crate::info;
 use crate::result::Result;
 
+use crate::boxed::Box;
+
 use core::arch::asm;
+use core::arch::global_asm;
+
 use core::fmt;
 use core::marker::PhantomData;
+
+use crate::mem::offset_of;
+use crate::mem::size_of;
+use crate::mem::size_of_val;
+
+use core::pin::Pin;
 
 /// x86のHLT命令を実行し、割り込みが来るまでCPUを休止させる。
 /// 無限ループの待機や、停止後の暴走防止に使う。
@@ -176,7 +190,227 @@ impl<const LEVEL: usize, const SHIFT: usize, NEXT: fmt::Debug> fmt::Debug
     }
 }
 
-pub type PT = Table<1, 12, [u8; PAGE_SIZE]>;
-pub type PD = Table<2, 21, PT>;
-pub type PDPT = Table<3, 30, PD>;
+pub type PT = Table<1, 12, [u8; PAGE_SIZE]>; // Page Table
+pub type PD = Table<2, 21, PT>; // Page Directory
+pub type PDPT = Table<3, 30, PD>; // Page Directory Point Table
 pub type PML4 = Table<4, 39, PDPT>;
+
+/// # Safety
+/// Anything can happen if the given selector is invalid.
+pub unsafe fn write_es(selector: u16) {
+    asm!(
+        "mov es, ax",
+        in("ax") selector
+    )
+}
+
+/// # Safety
+/// Anything can happen if the CS given is invalid.
+pub unsafe fn write_cs(selector: u16) {
+    // The MOV instruction CANNOT be used to load the CS register.
+    // Use far-jump(ljmp)insted.
+    asm!(
+        "lea rax, [rip + 2f]",  // Target address (label 1 below)
+        "push cx",
+        "push rax",
+        "ljmp [rsp]",
+            "2:",
+            "add rsp, 8 + 2",
+            in("cx") cs
+    )
+}
+
+// # Safety
+// Anything can happen if the given selector is invalid.
+pub unsafe fn write_ss(selector: u16) {
+    asm!(
+        "mov ss, ax",
+        in("ax") selector
+    )
+}
+
+// # Safety
+// Anything can happen if the given selector is invalid.
+pub unsafe fn write_ds(ds: u16) {
+    asm!(
+        "mov ds, ax",
+        in("ax") ds
+    )
+}
+
+// # Safety
+// Anything can happen if the given selector is invalid.
+pub unsafe fn write_fs(selector: u16) {
+    asm!(
+        "mov fs, ax",
+        in("ax") selector
+    )
+}
+
+// # Safety
+// Anything can happen if the given selector is invalid.
+pub unsafe fn write_gs(selector: u16) {
+    asm!(
+        "mov gs, ax",
+        in("ax") selector
+    )
+}
+
+#[allow(dead_code)]
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct FPUContext {
+    data: [u8; 512],
+}
+
+#[allow(dead_code)]
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct GeneralRegisterContext {
+    rax: u64,
+    rdx: u64,
+    rbx: u64,
+    rbp: u64,
+    rsi: u64,
+    rdi: u64,
+    r8: u64,
+    r9: u64,
+    r10: u64,
+    r11: u64,
+    r12: u64,
+    r13: u64,
+    r14: u64,
+    r15: u64,
+    rcx: u64,
+}
+
+const _: () = assert!(size_of::<GeneralRegisterContext>() == (16 - 1) * 8);
+
+#[allow(dead_code)]
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+struct InterrupContext {
+    rip: u64,
+    cs: u64,
+    rflags: u64,
+    rsp: u64,
+    ss: u64,
+}
+
+const _: () = assert!(size_of::<InterrupContext>() == 8 * 5);
+
+#[allow(dead_code)]
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct InterrupInfo {
+    fpu_context: FPUContext,
+    _dummy: u64,
+    greg: GeneralRegisterContext,
+    error_code: u64,
+    ctx: InterrupContext,
+}
+
+const _: () = assert!(size_of::<InterrupInfo>() == (16 + 4 + 1) * 8 + 8 + 512);
+
+impl fmt::Debug for InterrupInfo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "
+        {{
+            rip: {:#018X}, CS: {:#06X},
+            rsp: {:#018X}, SS: {:#06X},
+            rbp: {:#018X},
+
+            rflags: {:#018X},
+            error_code: {:#018X},
+
+            rax: {:#018X}, rcx: {:#018X},
+            rdx: {:#018X}, rbx: {:#018X},
+            rsi: {:#018X}, rdi: {:#018X},
+            r8:  {:#018X}, r9:  {:#018X},
+            r10: {:#018X}, r11: {:#018X},
+            r12: {:#018X}, r13: {:#018X},
+            r14: {:#018X}, r15: {:#018X},
+        }}",
+            self.ctx.rip,
+            self.ctx.cs,
+            self.ctx.rsp,
+            self.ctx.ss,
+            self.greg.rbp,
+            self.ctx.rflags,
+            self.error_code,
+            //
+            self.greg.rax,
+            self.greg.rcx,
+            self.greg.rdx,
+            self.greg.rbx,
+            //
+            self.greg.rsi,
+            self.greg.rdi,
+            //
+            self.greg.r8,
+            self.greg.r9,
+            self.greg.r10,
+            self.greg.r11,
+            self.greg.r12,
+            self.greg.r13,
+            self.greg.r14,
+            self.greg.r15,
+        )
+    }
+}
+
+interrupt_entrypoint!(3);
+interrupt_entrypoint!(6);
+interrupt_entrypoint_with_ecode!(8);
+interrupt_entrypoint_with_ecode!(13);
+interrupt_entrypoint_with_ecode!(14);
+interrupt_entrypoint!(32);
+
+extern "sysv64" {
+
+    fn interrupt_entrypoint3();
+    fn interrupt_entrypoint6();
+    fn interrupt_entrypoint8();
+    fn interrupt_entrypoint13();
+    fn interrupt_entrypoint14();
+    fn interrupt_entrypoint32();
+}
+
+global_asm! {
+    r#"
+    .globat inthandler_common
+    inthandler_common:
+        push r15
+        push r14
+        push r13
+        push r12
+        push r11
+        push r10
+        push r9
+        push r8
+        push rdi
+        push rsi
+        push rbp
+        push rbx
+        push rdx
+        push rax
+        // FPU State
+        sub rsp, 512 + 8
+        fxsave64[rsp]
+        // 1st parameter: pointer to the saved CPU state
+        mov rdi, rsp
+        // Align the stack to 16-bytes boundry
+        mov rbp, rsp
+        and rsp, -16
+        // 2nd parameter: Int#
+        mov rsi, rcx
+
+        call inthandler
+
+        mov rsp, rbp
+        //
+        
+    "#
+}
