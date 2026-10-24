@@ -7,22 +7,24 @@ image_handle: 0x00000000BEC4E498
 
 efi_system_table: 0x00000000bf9ee018
 
-[INFO] src/main.rs:52 : info
-[WARN] src/main.rs:53 : warn
-[ERROR] src/main.rs:54 : error
+image_base: 0x00000000BE317000
+image_size: 0x0000000000070000
+[INFO] src/main.rs:63 : info
+[WARN] src/main.rs:64 : warn
+[ERROR] src/main.rs:65 : error
 00000000: 49 42 49 20 53 59 53 54 46 00 02 00 78 00 00 00 |IBI SYSTF...x...|00000010: F8 EB 8B D5 00 00 00 00 18 D8 92 BF 00 00 00 00 |................|00000020: 00 00 01 00 00 00 00 00 18 CE D8 BE 00 00 00 00 |................|00000030: 50 C2 D1 BE 00 00 00 00 18 BF D8 BE 00 00 00 00 |P...............|00000040: 90 C6 D1 BE 00 00 00 00 18 B3 D8 BE 00 00 00 00 |................|00000050: F0 C0 D1 BE 00 00 00 00 98 EB 9E BF 00 00 00 00 |................|00000060: 40 01 ED BF 00 00 00 00                         |@.......|EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 4096, virtual_start: 0, number_of_pages: 159, attribute: 15 }
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 1048576, virtual_start: 0, number_of_pages: 1792, attribute: 15 }
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 8421376, virtual_start: 0, number_of_pages: 3, attribute: 15 }
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 8437760, virtual_start: 0, number_of_pages: 4, attribute: 15 }
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 22020096, virtual_start: 0, number_of_pages: 764470, attribute: 15 }
-EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3153420288, virtual_start: 0, number_of_pages: 9182, attribute: 15 }
-EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3191431168, virtual_start: 0, number_of_pages: 94, attribute: 15 }
+EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3153420288, virtual_start: 0, number_of_pages: 9153, attribute: 15 }
+EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3191369728, virtual_start: 0, number_of_pages: 109, attribute: 15 }
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3192795136, virtual_start: 0, number_of_pages: 1, attribute: 15 }
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3194126336, virtual_start: 0, number_of_pages: 2, attribute: 15 }
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3194159104, virtual_start: 0, number_of_pages: 2, attribute: 15 }
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3219128320, virtual_start: 0, number_of_pages: 154, attribute: 15 }
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 4294967296, virtual_start: 0, number_of_pages: 262144, attribute: 15 }
-Total: 1038007 pages = 4054 Mib
+Total: 1037993 pages = 4054 Mib
 Hello, Non-UEFI world !
 cr3 = 0x00000000bfc01000
 Some(L4Table @ 0x00000000bfc01000 {
@@ -612,3 +614,29 @@ Some(L2Table @ 0x00000000bfc03000 {
 }
 )
 None
+[INFO] src/x86.rs:832: TSS64 created @ 0x13FF7FE80
+[INFO] src/x86.rs:917: Loading GDT @ 0x000000013FF7FE20
+[INFO] src/x86.rs:923: Loading TSS ( selector = 0x18 )
+[INFO] src/x86.rs:774: Loading IDT: IdtrParameters { limit: 4096, base: 0x13ff7ee00 }
+[INFO] src/main.rs:111: Exception initialized!
+[ERROR] src/x86.rs:583: Interrupt Info: 
+        {
+            rip: 0x00000000BE32B3F5, CS: 0x0008,
+            rsp: 0x00000000BFEB0550, SS: 0x0010,
+            rbp: 0x00000000BFEB0550,
+
+            rflags: 0x0000000000000006,
+            error_code: 0x0000000000000000,
+
+            rax: 0x0000000000000000, rcx: 0x00000000BFEB0200,
+            rdx: 0x00000000BE34B748, rbx: 0x00000000BE4E72C8,
+            rsi: 0x00000000BE632018, rdi: 0x00000000BE632018,
+            r8:  0x0000000000000001, r9:  0x00000000BFEAFF5E,
+            r10: 0x00000000BFEB0360, r11: 0x0000000000000001,
+            r12: 0x0000000000000000, r13: 0x0000000000000000,
+            r14: 0x00000000BE4E7218, r15: 0x0000000000000005,
+        }
+[ERROR] src/x86.rs:584: Exception 0x03: 
+[ERROR] src/x86.rs:588: BreakPoint
+[INFO] src/main.rs:115: Execution continued
+[INFO] src/main.rs:119: Now we are using our own page tables!

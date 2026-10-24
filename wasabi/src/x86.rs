@@ -4,7 +4,7 @@ use crate::error;
 use crate::info;
 use crate::result::Result;
 
-use crate::boxed::Box;
+use alloc::boxed::Box;
 
 use core::arch::asm;
 use core::arch::global_asm;
@@ -12,9 +12,10 @@ use core::arch::global_asm;
 use core::fmt;
 use core::marker::PhantomData;
 
-use crate::mem::offset_of;
-use crate::mem::size_of;
-use crate::mem::size_of_val;
+use core::mem::offset_of;
+use core::mem::size_of;
+use core::mem::size_of_val;
+use core::mem::MaybeUninit;
 
 use core::pin::Pin;
 
@@ -141,6 +142,41 @@ impl<const LEVEL: usize, const SHIFT: usize, NEXT> Entry<LEVEL, SHIFT, NEXT> {
             Err("Page Not Found")
         }
     }
+
+    fn table_mut(&mut self) -> Result<&mut NEXT> {
+        if self.is_present() {
+            Ok(unsafe { &mut *((self.value & !ATTR_MASK) as *mut NEXT) })
+        } else {
+            Err("Page Not Found")
+        }
+    }
+
+    fn set_page(&mut self, phys: u64, attr: PageAttr) -> Result<()> {
+        if phys & ATTR_MASK != 0 {
+            Err("phys is not aligned")
+        } else {
+            self.value = phys | attr as u64;
+            Ok(())
+        }
+    }
+
+    fn populate(&mut self) -> Result<&mut Self> {
+        if self.is_present() {
+            Err("Page is already populate")
+        } else {
+            let next: Box<NEXT> = Box::new(unsafe { MaybeUninit::zeroed().assume_init() });
+            self.value = Box::into_raw(next) as u64 | PageAttr::ReadWriteKernel as u64;
+            Ok(self)
+        }
+    }
+
+    fn ensure_populated(&mut self) -> Result<&mut Self> {
+        if self.is_present() {
+            Ok(self)
+        } else {
+            self.populate()
+        }
+    }
 }
 
 impl<const LEVEL: usize, const SHIFT: usize, NEXT> fmt::Display for Entry<LEVEL, SHIFT, NEXT> {
@@ -180,6 +216,10 @@ impl<const LEVEL: usize, const SHIFT: usize, NEXT: core::fmt::Debug> Table<LEVEL
     pub fn next_level(&self, index: usize) -> Option<&NEXT> {
         self.entry.get(index).and_then(|e| e.table().ok())
     }
+
+    fn calc_index(&self, addr: u64) -> usize {
+        ((addr >> SHIFT) & 0b1_1111_1111) as usize
+    }
 }
 
 impl<const LEVEL: usize, const SHIFT: usize, NEXT: fmt::Debug> fmt::Debug
@@ -194,6 +234,55 @@ pub type PT = Table<1, 12, [u8; PAGE_SIZE]>; // Page Table
 pub type PD = Table<2, 21, PT>; // Page Directory
 pub type PDPT = Table<3, 30, PD>; // Page Directory Point Table
 pub type PML4 = Table<4, 39, PDPT>;
+
+impl PML4 {
+    pub fn new() -> Box<Self> {
+        Box::new(Self::default())
+    }
+
+    fn default() -> Self {
+        unsafe { MaybeUninit::zeroed().assume_init() }
+    }
+
+    pub fn create_mapping(
+        &mut self,
+        virt_start: u64,
+        virt_end: u64,
+        phys: u64,
+        attr: PageAttr,
+    ) -> Result<()> {
+        if virt_start & ATTR_MASK != 0 {
+            return Err("Invalid virt_start");
+        }
+
+        if virt_end & ATTR_MASK != 0 {
+            return Err("Invalid virt_start");
+        }
+
+        if phys & ATTR_MASK != 0 {
+            return Err("Invalid phys");
+        }
+
+        for addr in (virt_start..virt_end).step_by(PAGE_SIZE) {
+            let index = self.calc_index(addr);
+            let table = self.entry[index].ensure_populated()?.table_mut()?;
+
+            let index = table.calc_index(addr);
+            let table = table.entry[index].ensure_populated()?.table_mut()?;
+
+            let index = table.calc_index(addr);
+            let table = table.entry[index].ensure_populated()?.table_mut()?;
+
+            let index = table.calc_index(addr);
+
+            let pte = &mut table.entry[index];
+
+            pte.set_page(phys + addr - virt_start, attr)?;
+        }
+
+        Ok(())
+    }
+}
 
 /// # Safety
 /// Anything can happen if the given selector is invalid.
@@ -216,12 +305,12 @@ pub unsafe fn write_cs(selector: u16) {
         "ljmp [rsp]",
             "2:",
             "add rsp, 8 + 2",
-            in("cx") cs
+            in("cx") selector
     )
 }
 
-// # Safety
-// Anything can happen if the given selector is invalid.
+/// # Safety
+/// Anything can happen if the given selector is invalid.
 pub unsafe fn write_ss(selector: u16) {
     asm!(
         "mov ss, ax",
@@ -229,8 +318,8 @@ pub unsafe fn write_ss(selector: u16) {
     )
 }
 
-// # Safety
-// Anything can happen if the given selector is invalid.
+/// # Safety
+/// Anything can happen if the given selector is invalid.
 pub unsafe fn write_ds(ds: u16) {
     asm!(
         "mov ds, ax",
@@ -238,8 +327,8 @@ pub unsafe fn write_ds(ds: u16) {
     )
 }
 
-// # Safety
-// Anything can happen if the given selector is invalid.
+/// # Safety
+/// Anything can happen if the given selector is invalid.
 pub unsafe fn write_fs(selector: u16) {
     asm!(
         "mov fs, ax",
@@ -247,8 +336,8 @@ pub unsafe fn write_fs(selector: u16) {
     )
 }
 
-// # Safety
-// Anything can happen if the given selector is invalid.
+/// # Safety
+/// Anything can happen if the given selector is invalid.
 pub unsafe fn write_gs(selector: u16) {
     asm!(
         "mov gs, ax",
@@ -361,6 +450,48 @@ impl fmt::Debug for InterrupInfo {
     }
 }
 
+macro_rules! interrupt_entrypoint {
+    ($index:literal) => {
+        global_asm!(concat!(
+            ".global interrupt_entrypoint",
+            stringify!($index),
+            "\n",
+            "interrupt_entrypoint",
+            stringify!($index),
+            ":\n",
+            "push 0 // No error code\n",
+            "push rcx // Save rcx first to reuse\n",
+            "mov rcx, ",
+            stringify!($index),
+            "\n",
+            "jmp inthandler_common"
+        ));
+    };
+}
+
+macro_rules! interrupt_entrypoint_with_ecode {
+    ($index:literal) => {
+        global_asm!(concat!(
+            ".global interrupt_entrypoint",
+            stringify!($index),
+            "\n",
+            "interrupt_entrypoint",
+            stringify!($index),
+            ":\n",
+            "push rcx // Save rcx first to reuse\n",
+            "mov rcx, ",
+            stringify!($index),
+            "\n",
+            "push rcx // Save rcx first to reuse\n",
+            "push rcx // Save rcx first to reuse\n",
+            "mov rcx, ",
+            stringify!($index),
+            "\n",
+            "jmp inthandler_common"
+        ));
+    };
+}
+
 interrupt_entrypoint!(3);
 interrupt_entrypoint!(6);
 interrupt_entrypoint_with_ecode!(8);
@@ -369,7 +500,6 @@ interrupt_entrypoint_with_ecode!(14);
 interrupt_entrypoint!(32);
 
 extern "sysv64" {
-
     fn interrupt_entrypoint3();
     fn interrupt_entrypoint6();
     fn interrupt_entrypoint8();
@@ -380,7 +510,7 @@ extern "sysv64" {
 
 global_asm! {
     r#"
-    .globat inthandler_common
+    .global inthandler_common
     inthandler_common:
         push r15
         push r14
@@ -411,6 +541,459 @@ global_asm! {
 
         mov rsp, rbp
         //
-        
+        fxrstor64[rsp]
+        add rsp, 512 + 8
+        //
+        pop rax
+        pop rdx
+        pop rbx
+        pop rbp
+        pop rsi
+        pop rdi
+        pop r8
+        pop r9
+        pop r10
+        pop r11
+        pop r12
+        pop r13
+        pop r14
+        pop r15
+        //
+        pop rcx
+        add rsp, 8 // for Error Code
+        iretq
     "#
+}
+
+pub fn read_cr2() -> u64 {
+    let mut cr2: u64;
+
+    unsafe {
+        asm!(
+            "mov rax, cr2",
+            out("rax")
+            cr2
+        )
+    }
+    cr2
+}
+
+#[no_mangle]
+extern "sysv64" fn inthandler(info: &InterrupInfo, index: usize) {
+    error!("Interrupt Info: {:?}", info);
+    error!("Exception {index:#04X}: ");
+
+    match index {
+        3 => {
+            error!("BreakPoint");
+            return;
+        }
+        6 => {
+            error!("Invalid Opcode");
+        }
+        8 => {
+            error!("Double Fault");
+        }
+        13 => {
+            error!("General Protection Fault");
+
+            let rip = info.ctx.rip;
+
+            error!("Bytes @ RIP({rip:#018X})");
+
+            let rip = rip as *const u8;
+            let bytes = unsafe { core::slice::from_raw_parts(rip, 16) };
+
+            error!(" = {bytes:02X?}");
+        }
+        14 => {
+            error!("Page Fault");
+            error!("CR2={:018X}", read_cr2());
+
+            error!(
+                "Caused by: A {} mode {} on a {} page. page structures are {}",
+                if info.error_code & 0b0000_0100 != 0 {
+                    "user"
+                } else {
+                    "supervisor"
+                },
+                if info.error_code & 0b0001_0000 != 0 {
+                    "instruction fetch"
+                } else if info.error_code & 0b0010 != 0 {
+                    "data write"
+                } else {
+                    "data read"
+                },
+                if info.error_code & 0b0001 != 0 {
+                    "present"
+                } else {
+                    "non-present"
+                },
+                if info.error_code & 0b1000 != 0 {
+                    "invalid"
+                } else {
+                    "valid"
+                },
+            );
+        }
+        _ => {
+            error!("Not handled");
+        }
+    }
+    panic!("fatal exception");
+}
+
+#[no_mangle]
+extern "sysv64" fn int_handler_unimplemented() {
+    panic!("unexpected interrupt!");
+}
+
+pub const BIT_FLAGS_INTGATE: u8 = 0b0000_1110u8;
+pub const BIT_FLAGS_PRESENT: u8 = 0b1000_0000u8;
+pub const BIT_FLAGS_DPL0: u8 = 0 << 5;
+pub const BIT_FLAGS_DPL3: u8 = 3 << 5;
+
+#[repr(u8)]
+#[derive(Copy, Clone)]
+enum IdtAttr {
+    _NotPresent = 0,
+    IntGateDPL0 = BIT_FLAGS_INTGATE | BIT_FLAGS_PRESENT | BIT_FLAGS_DPL0,
+    IntGateDPL3 = BIT_FLAGS_INTGATE | BIT_FLAGS_PRESENT | BIT_FLAGS_DPL3,
+}
+
+#[repr(C, packed)]
+#[allow(dead_code)]
+#[derive(Copy, Clone)]
+pub struct IdtDescriptor {
+    offset_low: u16,
+    segment_selector: u16,
+    ist_index: u8,
+    attr: IdtAttr,
+    offset_mid: u16,
+    offset_high: u32,
+    _reserved: u32,
+}
+
+const _: () = assert!(size_of::<IdtDescriptor>() == 16);
+impl IdtDescriptor {
+    fn new(
+        segment_selector: u16,
+        ist_index: u8,
+        attr: IdtAttr,
+        f: unsafe extern "sysv64" fn(),
+    ) -> Self {
+        let handler_addr = f as *const unsafe extern "sysv64" fn() as usize;
+
+        Self {
+            offset_low: handler_addr as u16,
+            offset_mid: (handler_addr >> 16) as u16,
+            offset_high: (handler_addr >> 32) as u32,
+            segment_selector,
+            ist_index,
+            attr,
+            _reserved: 0,
+        }
+    }
+}
+
+#[allow(dead_code)]
+#[repr(C, packed)]
+#[derive(Debug)]
+struct IdtrParameters {
+    limit: u16,
+    base: *const IdtDescriptor,
+}
+
+const _: () = assert!(size_of::<IdtrParameters>() == 10);
+const _: () = assert!(offset_of!(IdtrParameters, base) == 2);
+
+pub struct Idt {
+    #[allow(dead_code)]
+    entries: Pin<Box<[IdtDescriptor; 0x100]>>,
+}
+
+impl Idt {
+    pub fn new(segment_selector: u16) -> Self {
+        let mut entries = [IdtDescriptor::new(
+            segment_selector,
+            1,
+            IdtAttr::IntGateDPL0,
+            int_handler_unimplemented,
+        ); 0x100];
+
+        entries[3] = IdtDescriptor::new(
+            segment_selector,
+            1,
+            IdtAttr::IntGateDPL3,
+            interrupt_entrypoint3,
+        );
+
+        entries[6] = IdtDescriptor::new(
+            segment_selector,
+            1,
+            IdtAttr::IntGateDPL0,
+            interrupt_entrypoint6,
+        );
+
+        entries[8] = IdtDescriptor::new(
+            segment_selector,
+            2,
+            IdtAttr::IntGateDPL0,
+            interrupt_entrypoint8,
+        );
+
+        entries[13] = IdtDescriptor::new(
+            segment_selector,
+            1,
+            IdtAttr::IntGateDPL0,
+            interrupt_entrypoint13,
+        );
+
+        entries[14] = IdtDescriptor::new(
+            segment_selector,
+            1,
+            IdtAttr::IntGateDPL0,
+            interrupt_entrypoint14,
+        );
+
+        entries[32] = IdtDescriptor::new(
+            segment_selector,
+            1,
+            IdtAttr::IntGateDPL0,
+            interrupt_entrypoint32,
+        );
+
+        let limit = size_of_val(&entries) as u16;
+        let entries = Box::pin(entries);
+
+        let params = IdtrParameters {
+            limit,
+            base: entries.as_ptr(),
+        };
+
+        info!("Loading IDT: {params:?}");
+
+        unsafe {
+            asm!("lidt [rcx]", in("rcx") &params);
+        }
+
+        Self { entries }
+    }
+}
+
+#[repr(C, packed)]
+struct TaskStateSegment64Inner {
+    _reserved0: u32,
+    _rsp: [u64; 3],
+    _ist: [u64; 8],
+    _reserved1: [u16; 5],
+    _io_map_base_addr: u16,
+}
+
+const _: () = assert!(size_of::<TaskStateSegment64Inner>() == 104);
+
+pub struct TaskStateSegment64 {
+    inner: Pin<Box<TaskStateSegment64Inner>>,
+}
+
+impl TaskStateSegment64 {
+    pub fn phys_addr(&self) -> u64 {
+        self.inner.as_ref().get_ref() as *const TaskStateSegment64Inner as u64
+    }
+
+    unsafe fn alloc_interrupt_stack() -> u64 {
+        const HANDLER_STACK_SIZE: usize = 64 * 1024;
+        let stack = Box::new([0u8; HANDLER_STACK_SIZE]);
+        let rsp = unsafe { stack.as_ptr().add(HANDLER_STACK_SIZE) as u64 };
+        core::mem::forget(stack);
+        rsp
+    }
+
+    pub fn new() -> Self {
+        let rsp0 = unsafe { Self::alloc_interrupt_stack() };
+        let mut ist = [0u64; 8];
+
+        for ist in ist[1..=7].iter_mut() {
+            *ist = unsafe { Self::alloc_interrupt_stack() };
+        }
+
+        let tss64 = TaskStateSegment64Inner {
+            _reserved0: 0,
+            _rsp: [rsp0, 0, 0],
+            _ist: ist,
+            _reserved1: [0; 5],
+            _io_map_base_addr: 0,
+        };
+
+        let this = Self {
+            inner: Box::pin(tss64),
+        };
+
+        info!("TSS64 created @ {:#X}", this.phys_addr(),);
+
+        this
+    }
+}
+
+impl Drop for TaskStateSegment64 {
+    fn drop(&mut self) {
+        panic!("TSS64 being dropped!");
+    }
+}
+
+pub fn init_exceptions() -> (GdtWrapper, Idt) {
+    let gdt = GdtWrapper::default();
+
+    gdt.load();
+
+    unsafe {
+        write_cs(KERNEL_CS);
+        write_ss(KERNEL_DS);
+        write_es(KERNEL_DS);
+        write_ds(KERNEL_DS);
+        write_fs(KERNEL_DS);
+        write_gs(KERNEL_DS);
+    }
+
+    let idt = Idt::new(KERNEL_CS);
+
+    (gdt, idt)
+}
+
+pub const BIT_TYPE_DATA: u64 = 0b10u64 << 43;
+pub const BIT_TYPE_CODE: u64 = 0b11u64 << 43;
+
+pub const BIT_PRESENT: u64 = 1u64 << 47;
+
+pub const BIT_CS_LONG_MODE: u64 = 1u64 << 53;
+pub const BIT_CS_READABLE: u64 = 1u64 << 53;
+
+pub const BIT_DS_WRITABLE: u64 = 1u64 << 41;
+
+pub const BIT_DPL0: u64 = 0u64 << 45;
+pub const BIT_DPL3: u64 = 3u64 << 45;
+
+#[repr(u64)]
+enum GtdAttr {
+    KernelCode = BIT_TYPE_CODE | BIT_PRESENT | BIT_CS_READABLE,
+    KernelData = BIT_TYPE_DATA | BIT_PRESENT | BIT_DS_WRITABLE,
+}
+
+#[allow(dead_code)]
+#[repr(C, packed)]
+struct GdtrParameters {
+    limit: u16,
+    base: *const Gdt,
+}
+
+pub const KERNEL_CS: u16 = 1 << 3;
+pub const KERNEL_DS: u16 = 2 << 3;
+pub const TSS64_SEL: u16 = 3 << 3;
+
+#[allow(dead_code)]
+#[repr(C, packed)]
+pub struct Gdt {
+    null_segment: GdtSegmentDescriptor,
+    kernel_code_segment: GdtSegmentDescriptor,
+    kernel_data_segment: GdtSegmentDescriptor,
+    task_state_segment: TaskStateSegment64Descriptor,
+}
+
+const _: () = assert!(size_of::<Gdt>() == 40);
+
+#[allow(dead_code)]
+pub struct GdtWrapper {
+    inner: Pin<Box<Gdt>>,
+    tss64: TaskStateSegment64,
+}
+
+impl GdtWrapper {
+    pub fn load(&self) {
+        let params = GdtrParameters {
+            limit: (size_of::<Gdt>() - 1) as u16,
+            base: self.inner.as_ref().get_ref() as *const Gdt,
+        };
+
+        info!("Loading GDT @ {:#018X}", params.base as u64);
+
+        unsafe {
+            asm!("lgdt [rcx]", in("rcx") &params);
+        }
+
+        info!("Loading TSS ( selector = {:#X} )", TSS64_SEL);
+
+        unsafe {
+            asm!("ltr cx", in("cx") TSS64_SEL);
+        }
+    }
+}
+
+impl Default for GdtWrapper {
+    fn default() -> Self {
+        let tss64 = TaskStateSegment64::new();
+        let gdt = Gdt {
+            null_segment: GdtSegmentDescriptor::null(),
+            kernel_code_segment: GdtSegmentDescriptor::new(GtdAttr::KernelCode),
+            kernel_data_segment: GdtSegmentDescriptor::new(GtdAttr::KernelData),
+            task_state_segment: TaskStateSegment64Descriptor::new(tss64.phys_addr()),
+        };
+
+        let gdt = Box::pin(gdt);
+        GdtWrapper { inner: gdt, tss64 }
+    }
+}
+
+#[allow(dead_code)]
+pub struct GdtSegmentDescriptor {
+    value: u64,
+}
+
+impl GdtSegmentDescriptor {
+    const fn null() -> Self {
+        Self { value: 0 }
+    }
+
+    const fn new(attr: GtdAttr) -> Self {
+        Self { value: attr as u64 }
+    }
+}
+
+#[repr(C, packed)]
+#[allow(dead_code)]
+struct TaskStateSegment64Descriptor {
+    limit_low: u16,
+    base_low: u16,
+    base_mid_low: u8,
+    attr: u16,
+    base_mid_high: u8,
+    base_high: u32,
+    reserved: u32,
+}
+
+impl TaskStateSegment64Descriptor {
+    const fn new(base_addr: u64) -> Self {
+        Self {
+            limit_low: size_of::<TaskStateSegment64Inner>() as u16,
+            base_low: (base_addr & 0xffff) as u16,
+            base_mid_low: ((base_addr >> 16) & 0xff) as u8,
+            attr: 0b1000_0000_1000_1001,
+            base_mid_high: ((base_addr >> 24) & 0xff) as u8,
+            base_high: ((base_addr >> 32) & 0xffff_ffff) as u32,
+            reserved: 0,
+        }
+    }
+}
+
+const _: () = assert!(size_of::<TaskStateSegment64Descriptor>() == 16);
+
+pub fn trigger_debug_interrupt() {
+    unsafe { asm!("int3") }
+}
+
+/// # Safety
+/// Writing to CR3 can causes any exceptions so it is
+/// programmer's responsibility to setup correct page tables.
+#[no_mangle]
+pub unsafe fn write_cr3(table: *const PML4) {
+    asm!("mov cr3, rax", in("rax") table);
 }
