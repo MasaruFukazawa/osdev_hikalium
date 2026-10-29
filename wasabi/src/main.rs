@@ -118,5 +118,13 @@ fn efi_main(image_handle: EfiHandle, efi_system_table: &EfiSystemTable) {
 
     info!("Now we are using our own page tables!");
 
+    info!("Reading from memory address 0...");
+
+    #[allow(clippy::zero_ptr)]
+    #[allow(deref_nullptr)]
+    let value_at_zero = unsafe { *(0 as *const u8) };
+    info!("value_at_zero = {value_at_zero}");
+    
+
     exit_qemu(QemuExitCode::Success);
 }

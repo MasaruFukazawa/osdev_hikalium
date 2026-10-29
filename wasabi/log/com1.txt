@@ -7,8 +7,8 @@ image_handle: 0x00000000BEC4E498
 
 efi_system_table: 0x00000000bf9ee018
 
-image_base: 0x00000000BE317000
-image_size: 0x0000000000070000
+image_base: 0x00000000BE316000
+image_size: 0x0000000000071000
 [INFO] src/main.rs:63 : info
 [WARN] src/main.rs:64 : warn
 [ERROR] src/main.rs:65 : error
@@ -17,14 +17,14 @@ EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 1048576,
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 8421376, virtual_start: 0, number_of_pages: 3, attribute: 15 }
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 8437760, virtual_start: 0, number_of_pages: 4, attribute: 15 }
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 22020096, virtual_start: 0, number_of_pages: 764470, attribute: 15 }
-EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3153420288, virtual_start: 0, number_of_pages: 9153, attribute: 15 }
+EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3153420288, virtual_start: 0, number_of_pages: 9152, attribute: 15 }
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3191369728, virtual_start: 0, number_of_pages: 109, attribute: 15 }
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3192795136, virtual_start: 0, number_of_pages: 1, attribute: 15 }
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3194126336, virtual_start: 0, number_of_pages: 2, attribute: 15 }
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3194159104, virtual_start: 0, number_of_pages: 2, attribute: 15 }
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3219128320, virtual_start: 0, number_of_pages: 154, attribute: 15 }
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 4294967296, virtual_start: 0, number_of_pages: 262144, attribute: 15 }
-Total: 1037993 pages = 4054 Mib
+Total: 1037992 pages = 4054 Mib
 Hello, Non-UEFI world !
 cr3 = 0x00000000bfc01000
 Some(L4Table @ 0x00000000bfc01000 {
@@ -621,18 +621,18 @@ None
 [INFO] src/main.rs:111: Exception initialized!
 [ERROR] src/x86.rs:583: Interrupt Info: 
         {
-            rip: 0x00000000BE32B3F5, CS: 0x0008,
-            rsp: 0x00000000BFEB0550, SS: 0x0010,
-            rbp: 0x00000000BFEB0550,
+            rip: 0x00000000BE32A925, CS: 0x0008,
+            rsp: 0x00000000BFEB01B0, SS: 0x0010,
+            rbp: 0x00000000BFEB01B0,
 
-            rflags: 0x0000000000000006,
+            rflags: 0x0000000000000002,
             error_code: 0x0000000000000000,
 
-            rax: 0x0000000000000000, rcx: 0x00000000BFEB0200,
-            rdx: 0x00000000BE34B748, rbx: 0x00000000BE4E72C8,
+            rax: 0x0000000000000000, rcx: 0x00000000BFEAFE00,
+            rdx: 0x00000000BE34B7D8, rbx: 0x00000000BE4E72C8,
             rsi: 0x00000000BE632018, rdi: 0x00000000BE632018,
-            r8:  0x0000000000000001, r9:  0x00000000BFEAFF5E,
-            r10: 0x00000000BFEB0360, r11: 0x0000000000000001,
+            r8:  0x0000000000000001, r9:  0x00000000BFEAFBBE,
+            r10: 0x00000000BFEAFFC0, r11: 0x0000000000000001,
             r12: 0x0000000000000000, r13: 0x0000000000000000,
             r14: 0x00000000BE4E7218, r15: 0x0000000000000005,
         }
@@ -640,3 +640,5 @@ None
 [ERROR] src/x86.rs:588: BreakPoint
 [INFO] src/main.rs:115: Execution continued
 [INFO] src/main.rs:119: Now we are using our own page tables!
+[INFO] src/main.rs:121: Reading from memory address 0...
+[INFO] src/main.rs:126: value_at_zero = 0

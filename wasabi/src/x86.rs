@@ -988,7 +988,7 @@ const _: () = assert!(size_of::<TaskStateSegment64Descriptor>() == 16);
 
 pub fn trigger_debug_interrupt() {
     unsafe { asm!("int3") }
-}
+} 
 
 /// # Safety
 /// Writing to CR3 can causes any exceptions so it is
