@@ -1,4 +1,4 @@
-.PHONY: build up down shell logs restart cargo-fmt cargo-fmt-check cargo-clippy cargo-run cargo-build launch setup-hooks
+.PHONY: build up down shell logs restart cargo-fmt cargo-fmt-check cargo-clippy cargo-test cargo-run cargo-build launch setup-hooks
 
 build:
 	docker-compose build
@@ -25,6 +25,9 @@ cargo-fmt-check:
 
 cargo-clippy:
 	docker exec rust_ubuntu bash -c "cd /wasabi && cargo clippy -- -D warnings"
+
+cargo-test:
+	docker exec rust_ubuntu bash -c "cd /wasabi && cargo test"
 
 cargo-run:
 	docker exec rust_ubuntu bash -c "cd /wasabi && cargo run"
