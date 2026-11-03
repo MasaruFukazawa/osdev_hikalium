@@ -988,7 +988,7 @@ const _: () = assert!(size_of::<TaskStateSegment64Descriptor>() == 16);
 
 pub fn trigger_debug_interrupt() {
     unsafe { asm!("int3") }
-} 
+}
 
 /// # Safety
 /// Writing to CR3 can causes any exceptions so it is
@@ -996,4 +996,10 @@ pub fn trigger_debug_interrupt() {
 #[no_mangle]
 pub unsafe fn write_cr3(table: *const PML4) {
     asm!("mov cr3, rax", in("rax") table);
+}
+
+pub fn flush_tlb() {
+    unsafe {
+        write_cr3(read_cr3());
+    }
 }
