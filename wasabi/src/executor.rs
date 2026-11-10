@@ -13,6 +13,8 @@ use core::future::Future;
 use core::panic::Location;
 use core::pin::Pin;
 use core::ptr::null;
+//use core::sync::atomic::AtomicBool;
+//use core::sync::atomic::Ordering;
 use core::task::Context;
 use core::task::Poll;
 use core::task::RawWaker;
@@ -117,9 +119,23 @@ impl Executor {
         }
     }
 }
-
+/*
 impl Default for Executor {
     fn default() -> Self {
         Self::new()
     }
 }
+
+#[derive(Default)]
+pub struct Yield {
+    polled: AtomicBool,
+}
+
+impl Future for Yield {
+    type Output = ();
+
+    fn poll(self: Pin<&mut Self>, _: &mut Context) -> Poll<()> {
+
+    }
+}
+*/

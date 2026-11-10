@@ -7,7 +7,7 @@ image_handle: 0x00000000BEC4E498
 
 efi_system_table: 0x00000000bf9ee018
 
-image_base: 0x00000000BE307000
+image_base: 0x00000000BE305000
 image_size: 0x0000000000079000
 [INFO] src/main.rs:67 : info
 [WARN] src/main.rs:68 : warn
@@ -17,8 +17,9 @@ EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 1048576,
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 8421376, virtual_start: 0, number_of_pages: 3, attribute: 15 }
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 8437760, virtual_start: 0, number_of_pages: 4, attribute: 15 }
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 22020096, virtual_start: 0, number_of_pages: 764470, attribute: 15 }
-EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3153420288, virtual_start: 0, number_of_pages: 9137, attribute: 15 }
-EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3191341056, virtual_start: 0, number_of_pages: 117, attribute: 15 }
+EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3153420288, virtual_start: 0, number_of_pages: 9135, attribute: 15 }
+EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3191332864, virtual_start: 0, number_of_pages: 118, attribute: 15 }
+EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3192791040, virtual_start: 0, number_of_pages: 1, attribute: 15 }
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3194126336, virtual_start: 0, number_of_pages: 2, attribute: 15 }
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3194159104, virtual_start: 0, number_of_pages: 2, attribute: 15 }
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 3219128320, virtual_start: 0, number_of_pages: 154, attribute: 15 }
@@ -620,25 +621,33 @@ None
 [INFO] src/main.rs:115: Exception initialized!
 [ERROR] src/x86.rs:583: Interrupt Info: 
         {
-            rip: 0x00000000BE31BCF5, CS: 0x0008,
-            rsp: 0x00000000BFEB04C0, SS: 0x0010,
-            rbp: 0x00000000BFEB04C0,
+            rip: 0x00000000BE31A7B5, CS: 0x0008,
+            rsp: 0x00000000BFEB0490, SS: 0x0010,
+            rbp: 0x00000000BFEB0490,
 
             rflags: 0x0000000000000006,
             error_code: 0x0000000000000000,
 
             rax: 0x0000000000000000, rcx: 0x00000000BFEB0100,
-            rdx: 0x00000000BE3419C8, rbx: 0x00000000BE4E52C8,
+            rdx: 0x00000000BE33FAE8, rbx: 0x00000000BE4E62C8,
             rsi: 0x00000000BE632018, rdi: 0x00000000BE632018,
-            r8:  0x0000000000000001, r9:  0x00000000BFEAFECE,
-            r10: 0x00000000BFEB02D0, r11: 0x0000000000000001,
+            r8:  0x0000000000000001, r9:  0x00000000BFEAFE9E,
+            r10: 0x00000000BFEB02A0, r11: 0x0000000000000001,
             r12: 0x0000000000000000, r13: 0x0000000000000000,
-            r14: 0x00000000BE4E5218, r15: 0x0000000000000005,
+            r14: 0x00000000BE4E6218, r15: 0x0000000000000005,
         }
 [ERROR] src/x86.rs:584: Exception 0x03: 
 [ERROR] src/x86.rs:588: BreakPoint
 [INFO] src/main.rs:119: Execution continued
 [INFO] src/main.rs:123: Now we are using our own page tables!
-[INFO] src/executor.rs:99 : Executor starts running...
-[INFO] src/main.rs:137: Hello from the async world!
-[INFO] src/executor.rs:109: Task completed: Task(src/main.rs:136): Ok(())
+[INFO] src/executor.rs:101: Executor starts running...
+[INFO] src/main.rs:138: 100
+[INFO] src/main.rs:138: 101
+[INFO] src/main.rs:138: 102
+[INFO] src/main.rs:138: 103
+[INFO] src/executor.rs:111: Task completed: Task(src/main.rs:136): Ok(())
+[INFO] src/main.rs:145: 200
+[INFO] src/main.rs:145: 201
+[INFO] src/main.rs:145: 202
+[INFO] src/main.rs:145: 203
+[INFO] src/executor.rs:111: Task completed: Task(src/main.rs:143): Ok(())
