@@ -5,6 +5,7 @@
 use core::panic::PanicInfo; // パニックハンドラの引数型（#[panic_handler]で使用）
 
 use wasabi::error;
+use wasabi::executor::yield_execution;
 use wasabi::executor::Executor;
 use wasabi::executor::Task;
 use wasabi::graphics::draw_test_pattern;
@@ -136,6 +137,7 @@ fn efi_main(image_handle: EfiHandle, efi_system_table: &EfiSystemTable) {
     let task1 = Task::new(async {
         for i in 100..=103 {
             info!("{i}");
+            yield_execution().await;
         }
         Ok(())
     });
@@ -143,6 +145,7 @@ fn efi_main(image_handle: EfiHandle, efi_system_table: &EfiSystemTable) {
     let task2 = Task::new(async {
         for i in 200..=203 {
             info!("{i}");
+            yield_execution().await;
         }
         Ok(())
     });
