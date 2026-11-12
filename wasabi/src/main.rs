@@ -11,26 +11,20 @@ use wasabi::executor::Task;
 use wasabi::graphics::draw_test_pattern;
 use wasabi::graphics::fill_rect;
 use wasabi::graphics::Bitmap;
-
+use wasabi::hpet::Hpet;
 use wasabi::info;
-
 use wasabi::init::init_basic_runtime;
 use wasabi::init::init_paging;
-
 use wasabi::print::hexdump;
 use wasabi::println;
-
 use wasabi::qemu::exit_qemu;
 use wasabi::qemu::QemuExitCode;
-
 use wasabi::uefi::init_vram;
 use wasabi::uefi::locate_loaded_image_protocal;
 use wasabi::uefi::EfiHandle;
 use wasabi::uefi::EfiMemoryType;
 use wasabi::uefi::EfiSystemTable;
-
 use wasabi::warn;
-
 use wasabi::x86::flush_tlb;
 use wasabi::x86::init_exceptions;
 use wasabi::x86::read_cr3;
@@ -141,11 +135,13 @@ fn efi_main(image_handle: EfiHandle, efi_system_table: &EfiSystemTable) {
         .base_address()
         .expect("Failed to get HPET base address");
 
-    info!("HPET is at {hpet:#018X}");
+    info!("HPET is at {hpet:#p}");
+
+    let hpet = Hpet::new(hpet);
 
     let task1 = Task::new(async move {
         for i in 100..=103 {
-            info!("{i}");
+            info!("{i} hpet.main_counter = {}", hpet.main_counter());
             yield_execution().await;
         }
         Ok(())
