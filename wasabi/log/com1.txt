@@ -9,9 +9,9 @@ efi_system_table: 0x00000000bf9ee018
 
 image_base: 0x00000000BE2FF000
 image_size: 0x000000000007D000
-[INFO] src/main.rs:62 : info
-[WARN] src/main.rs:63 : warn
-[ERROR] src/main.rs:64 : error
+[INFO] src/main.rs:64 : info
+[WARN] src/main.rs:65 : warn
+[ERROR] src/main.rs:66 : error
 00000000: 49 42 49 20 53 59 53 54 46 00 02 00 78 00 00 00 |IBI SYSTF...x...|00000010: F8 EB 8B D5 00 00 00 00 18 D8 92 BF 00 00 00 00 |................|00000020: 00 00 01 00 00 00 00 00 18 CE D8 BE 00 00 00 00 |................|00000030: 50 C2 D1 BE 00 00 00 00 18 BF D8 BE 00 00 00 00 |P...............|00000040: 90 C6 D1 BE 00 00 00 00 18 B3 D8 BE 00 00 00 00 |................|00000050: F0 C0 D1 BE 00 00 00 00 98 EB 9E BF 00 00 00 00 |................|00000060: 40 01 ED BF 00 00 00 00 0B 00 00 00 00 00 00 00 |@...............|00000070: 98 EC 9E BF 00 00 00 00                         |........|EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 4096, virtual_start: 0, number_of_pages: 159, attribute: 15 }
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 1048576, virtual_start: 0, number_of_pages: 1792, attribute: 15 }
 EfiMemoryDescriptor { memory_type: CONVENTIONAL_MEMORY, physical_start: 8421376, virtual_start: 0, number_of_pages: 3, attribute: 15 }
@@ -617,37 +617,37 @@ None
 [INFO] src/x86.rs:917: Loading GDT @ 0x000000013FF7FE20
 [INFO] src/x86.rs:923: Loading TSS ( selector = 0x18 )
 [INFO] src/x86.rs:774: Loading IDT: IdtrParameters { limit: 4096, base: 0x13ff7ee00 }
-[INFO] src/main.rs:112: Exception initialized!
+[INFO] src/main.rs:114: Exception initialized!
 [ERROR] src/x86.rs:583: Interrupt Info: 
         {
-            rip: 0x00000000BE315C25, CS: 0x0008,
-            rsp: 0x00000000BFEB01B0, SS: 0x0010,
-            rbp: 0x00000000BFEB01B0,
+            rip: 0x00000000BE315FB5, CS: 0x0008,
+            rsp: 0x00000000BFEB01A0, SS: 0x0010,
+            rbp: 0x00000000BFEB01A0,
 
-            rflags: 0x0000000000000002,
+            rflags: 0x0000000000000006,
             error_code: 0x0000000000000000,
 
             rax: 0x0000000000000000, rcx: 0x00000000BFEAFE00,
-            rdx: 0x00000000BE33CCA8, rbx: 0x00000000BE4E52C8,
+            rdx: 0x00000000BE33CD78, rbx: 0x00000000BE4E52C8,
             rsi: 0x00000000BE632018, rdi: 0x00000000BE632018,
-            r8:  0x0000000000000001, r9:  0x00000000BFEAFBBE,
-            r10: 0x00000000BFEAFFC0, r11: 0x0000000000000001,
+            r8:  0x0000000000000001, r9:  0x00000000BFEAFBAE,
+            r10: 0x00000000BFEAFFB0, r11: 0x0000000000000001,
             r12: 0x0000000000000000, r13: 0x0000000000000000,
             r14: 0x00000000BE4E5218, r15: 0x0000000000000005,
         }
 [ERROR] src/x86.rs:584: Exception 0x03: 
 [ERROR] src/x86.rs:588: BreakPoint
-[INFO] src/main.rs:116: Execution continued
-[INFO] src/main.rs:120: Now we are using our own page tables!
-[INFO] src/main.rs:138: HPET is at 0x00000000fed00000
+[INFO] src/main.rs:118: Execution continued
+[INFO] src/main.rs:122: Now we are using our own page tables!
+[INFO] src/main.rs:140: HPET is at 0x00000000fed00000
 [INFO] src/executor.rs:101: Executor starts running...
-[INFO] src/main.rs:144: 100 hpet.main_counter = 548304
-[INFO] src/main.rs:152: 200
-[INFO] src/main.rs:144: 101 hpet.main_counter = 1322320
-[INFO] src/main.rs:152: 201
-[INFO] src/main.rs:144: 102 hpet.main_counter = 1592495
-[INFO] src/main.rs:152: 202
-[INFO] src/main.rs:144: 103 hpet.main_counter = 1961408
-[INFO] src/main.rs:152: 203
-[INFO] src/executor.rs:111: Task completed: Task(src/main.rs:142): Ok(())
-[INFO] src/executor.rs:111: Task completed: Task(src/main.rs:150): Ok(())
+[INFO] src/main.rs:147: 100 hpet.main_counter = 1200025
+[INFO] src/main.rs:155: 200 hpet.main_counter = 1536262
+[INFO] src/main.rs:147: 101 hpet.main_counter = 2202975
+[INFO] src/main.rs:155: 201 hpet.main_counter = 2612708
+[INFO] src/main.rs:147: 102 hpet.main_counter = 3333225
+[INFO] src/main.rs:155: 202 hpet.main_counter = 3528925
+[INFO] src/main.rs:147: 103 hpet.main_counter = 3738925
+[INFO] src/main.rs:155: 203 hpet.main_counter = 3950491
+[INFO] src/executor.rs:111: Task completed: Task(src/main.rs:145): Ok(())
+[INFO] src/executor.rs:111: Task completed: Task(src/main.rs:153): Ok(())
